@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>花语者</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body{
+            background: url("img/bg.jpg");
+        }
+        div h1{
+            color: white;
+        }
+        .container{
+            margin-top: 150px;
+            top: 200px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <script type="text/javascript" src="lib/dist/nebulas.js"></script>
+
+    <script type="text/javascript" src="lib/dist/nebPay.js"></script>
+    <script type="text/javascript" src="./jquery-3.3.1.min.js"></script>
+
+    <link rel=stylesheet href=lib/bootstrap-4.0.0-dist/css/bootstrap.min.css>
+
+
+    <div class="container" >
+        <div class="row clearfix">
+
+            <div class="col-md-12 column">
+                <div style="text-align: center">
+                    <!--<img src="img/logo.png" style="width: 300px;height: 300px;">-->
+                    <h1>花语者</h1>
+                </div>
+
+                <div class="container-fluid" >
+                        <div class="row-fluid">
+                            <div class="span12">
+                                <div class="list-group" style="text-align: center;margin-top: 30px">
+                                    <span class="label label-success"><h3>查询花语</h3></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                <div class="input-group" style="margin-top:20px;">
+                    <input type="text" class="form-control" placeholder="请输入花语名称" id=search_title />
+                    <span class="input-group-btn">
+                        <button class="btn btn-lg btn-primary" id=search>查找</button>
+                    </span>
+                </div>
+                </div>
+
+
+
+            </div>
+            <div class="row clearfix">
+                <div class="col-md-12 column">
+                </div>
+            </div>
+
+            <div style="text-align: center">
+                <h1 id=title></h1>
+            </div>
+
+            <div id=content style="margin-left:20px"></div>
+
+            <div id=author style="text-align: right"></div>
+
+        <div id="add_div" style="display: none">
+
+            <div class="container-fluid">
+                    <div class="row-fluid">
+                        <div class="span12">
+
+                            <div class="list-group" style="margin-top: 30px">
+                                <span class="label label-info"><h3>立即发布</h3></span>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+            <div class="input-group input-group-lg" style=" margin-top: 40px;margin-left: 10px;margin-right: 10px">
+                <span class="input-group-addon"style="width:100px" >花 名</span>
+                <input type="text" class="form-control" placeholder="输入花名" id=input_title>
+            </div>
+            <div class="input-group input-group-lg" style="margin-top: 20px;margin-left: 10px;margin-right: 10px">
+                <span class="input-group-addon" style="width:100px">花 语</span>
+                <input type="text" class="form-control" placeholder="输入花语" id=input_content>
+            </div>
+                <button class="btn btn-primary btn-lg btn-block" style="margin-top:50px " id=post>提交</button>
+
+            </div>
+
+    </div>
+
+           
+
+        </div>
+</body>
+
+
+
+
+
+
+
+<script>
+    "use strict";
+    var dappContactAddress = "n22czoqPRTB1chj8ioAuyLtnade38N7JaAn";
+    var nebulas = require("nebulas"), Account = Account, neb = new nebulas.Neb();
+    neb.setRequest(new nebulas.HttpRequest("https://mainnet.nebulas.io"))
+
+
+    var NebPay = require("nebpay");     //https://github.com/nebulasio/nebPay
+    var nebPay = new NebPay();
+    var serialNumber
+
+    $("#search").click(function () {
+        if (!$("#search_title").val()) {
+            alert('input the name of flower first');
+            return;
+        }
+
+        $('#content').text("");
+        var from = dappContactAddress
+        var value = "0";
+        var nonce = "0"
+        var gas_price = "1000000"
+        var gas_limit = "2000000"
+        var callFunction = "get";
+        var callArgs = "[\"" + $("#search_title").val() + "\"]";
+        console.log(callArgs);
+        var contract = {
+            "function": callFunction,
+            "args": callArgs
+        }
+
+
+        neb.api.call(from, dappContactAddress, value, nonce, gas_price, gas_limit, contract).then(function (resp) {
+            var result = resp.result;
+            
+            if (result === 'null') {
+                $("#add_div").show();
+                $('#content').text("cannt find the one,maybe you want to submit?");
+                $('#content').attr("style","color:white");
+
+                $('#title').text("");
+                $('#author').text("");
+                return;
+            }else {
+                $("#add_div").hide();
+            }
+            console.log(result);
+            result = JSON.parse(result);
+            $("#title").text(result.name);
+
+            $('#content').text("花语:  " + result.emblems);
+            $('#author').text("作者：" + result.author);
+            $('#author').attr("style","color:white");
+            $('#content').attr("style","color:white");
+
+        }).catch(function (err) {
+            console.log("error :" + err.message);
+
+        })
+
+    })
+
+
+
+    $('#post').click(function () {
+        if (!$("#input_title").val() || !$("#input_content").val()) {
+            alert('neither name nor emblems can be null');
+            return;
+        }
+        var to = dappContactAddress;
+        var value = "0";
+        var callFunction = "save";
+        var callArgs = "[\"" + $("#input_title").val() + "\",\"" + $("#input_content").val() + "\"]";
+        console.log(callArgs);
+
+        serialNumber = nebPay.call(to, value, callFunction, callArgs, {    //使用nebpay的call接口去调用合约,
+            listener: function (resp) {
+                console.log("thecallback is " + resp)
+            }
+        });
+
+    })
+
+</script>
+
+</html>
